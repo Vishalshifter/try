@@ -93,13 +93,58 @@ const MeetingContext = createContext<MeetingContextType | undefined>(undefined);
 export function MeetingProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(meetingReducer, initialState);
 
-  const addMeeting = (meeting: Omit<Meeting, 'id'>) => {
+  const addMeeting = async (meeting: Omit<Meeting, 'id'>) => {
     const newMeeting: Meeting = {
       ...meeting,
       id: Date.now().toString(),
     };
-    dispatch({ type: 'ADD_MEETING', payload: newMeeting });
-    dispatch({ type: 'ADD_NOTIFICATION', payload: `Meeting "${meeting.title}" created` });
+
+    // Call the API to create the meeting
+    try {
+      console.log('[MEETING_CONTEXT] Creating meeting via API:', {
+        title: meeting.title,
+        participantsCount: meeting.participants.length
+      });
+
+      const response = await fetch('/api/meetings/start', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('authToken') || ''}`
+        },
+        body: JSON.stringify({
+          title: meeting.title,
+          meetingId: `meeting-${Date.now()}`,
+          platform: 'web',
+          participants: meeting.participants.map(email => ({ email, name: email.split('@')[0] })),
+          scheduledAt: meeting.date || new Date().toISOString()
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('[MEETING_CONTEXT] API error:', {
+          status: response.status,
+          error: errorData.error
+        });
+        throw new Error(errorData.error || 'Failed to create meeting');
+      }
+
+      const result = await response.json();
+      console.log('[MEETING_CONTEXT] Meeting created successfully:', {
+        meetingId: result.data?.meetingId,
+        success: result.success
+      });
+
+      dispatch({ type: 'ADD_MEETING', payload: newMeeting });
+      dispatch({ type: 'ADD_NOTIFICATION', payload: `Meeting "${meeting.title}" created` });
+    } catch (error: any) {
+      console.error('[MEETING_CONTEXT] Error creating meeting:', {
+        error: error.message,
+        stack: error.stack
+      });
+      dispatch({ type: 'ADD_NOTIFICATION', payload: `Failed to create meeting: ${error.message}` });
+    }
   };
 
   const updateMeeting = (meeting: Meeting) => {
