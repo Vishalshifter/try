@@ -8,9 +8,7 @@ import {
   Clock, 
   Calendar, 
   MoreVertical, 
-  Edit, 
-  Trash2, 
-  Download,
+  Trash2,
   Eye,
   MessageSquare
 } from 'lucide-react';
@@ -105,62 +103,9 @@ export default function MeetingCard({ meeting, onRefresh }: MeetingCardProps) {
     }
   };
 
-  const handleGenerateNotes = async () => {
-    try {
-      setLoading(true);
-      const token = await (window as any).firebase?.auth?.currentUser?.getIdToken();
-      
-      if (!token) {
-        toast.error('Authentication required');
-        return;
-      }
 
-      const response = await fetch(`/api/meetings/${meeting.id}/notes`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          includeActionItems: true,
-          includeDecisions: true,
-          includeKeyTopics: true,
-          includeSentiment: true,
-        }),
-      });
 
-      if (!response.ok) {
-        throw new Error('Failed to generate notes');
-      }
 
-      toast.success('AI notes generated successfully');
-      onRefresh();
-    } catch (error) {
-      console.error('Error generating notes:', error);
-      toast.error('Failed to generate notes');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleExport = async (format: 'pdf' | 'csv') => {
-    try {
-      setLoading(true);
-      
-      if (format === 'pdf') {
-        // PDF export logic would go here
-        toast.success('PDF export started');
-      } else {
-        // CSV export logic would go here
-        toast.success('CSV export started');
-      }
-    } catch (error) {
-      console.error('Error exporting:', error);
-      toast.error('Failed to export');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return (
     <div className="p-6 hover:bg-gray-50 transition-colors">
@@ -195,10 +140,10 @@ export default function MeetingCard({ meeting, onRefresh }: MeetingCardProps) {
               </span>
             </div>
             
-            {meeting.participants.length > 0 && (
+            {(meeting.participants?.length || 0) > 0 && (
               <div className="flex items-center space-x-1">
                 <Users className="w-4 h-4" />
-                <span>{meeting.participants.length} participants</span>
+                <span>{meeting.participants?.length || 0} participants</span>
               </div>
             )}
           </div>
@@ -235,52 +180,20 @@ export default function MeetingCard({ meeting, onRefresh }: MeetingCardProps) {
               </div>
             )}
 
-            {meeting.actionItems.length > 0 && (
+            {(meeting.actionItems?.length || 0) > 0 && (
               <div className="bg-gray-50 p-3 rounded-lg">
                 <div className="flex items-center space-x-2 mb-2">
                   <Calendar className="w-4 h-4 text-gray-600" />
                   <span className="text-sm font-medium text-gray-700">Action Items</span>
                 </div>
                 <p className="text-sm text-gray-600">
-                  {meeting.actionItems.length} action item{meeting.actionItems.length !== 1 ? 's' : ''}
+                  {meeting.actionItems?.length || 0} action item{(meeting.actionItems?.length || 0) !== 1 ? 's' : ''}
                 </p>
               </div>
             )}
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex items-center space-x-3">
-            {meeting.transcript && !meeting.summary && (
-              <button
-                onClick={handleGenerateNotes}
-                disabled={loading}
-                className="inline-flex items-center px-3 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:opacity-50"
-              >
-                <Eye className="w-4 h-4 mr-2" />
-                Generate AI Notes
-              </button>
-            )}
 
-            {meeting.summary && (
-              <button
-                onClick={() => handleExport('pdf')}
-                disabled={loading}
-                className="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
-              >
-                <Download className="w-4 h-4 mr-2" />
-                Export PDF
-              </button>
-            )}
-
-            <button
-              onClick={() => handleExport('csv')}
-              disabled={loading}
-              className="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
-            >
-              <Download className="w-4 h-4 mr-2" />
-              Export CSV
-            </button>
-          </div>
         </div>
 
         {/* Actions Menu */}
@@ -294,16 +207,7 @@ export default function MeetingCard({ meeting, onRefresh }: MeetingCardProps) {
 
           {showActions && (
             <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10 border border-gray-200">
-              <button
-                onClick={() => {
-                  // Edit logic would go here
-                  setShowActions(false);
-                }}
-                className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-              >
-                <Edit className="w-4 h-4 mr-3" />
-                Edit Meeting
-              </button>
+
               
               <button
                 onClick={handleDelete}

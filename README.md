@@ -1,289 +1,248 @@
 # Meeting Assistant Bot
 
-A production-ready AI-powered meeting assistant that integrates with Zoom, Microsoft Teams, and Google Meet to automatically transcribe meetings, generate summaries, extract action items, and provide intelligent insights.
+AI-powered meeting assistant that integrates with Google Meet and Fireflies.ai for automatic transcription and meeting management.
 
 ## 🚀 Features
 
-### Core Functionality
-- **Multi-Platform Integration**: Support for Zoom, Microsoft Teams, and Google Meet
-- **Real-time Audio Processing**: Capture and process meeting audio in real-time
-- **AI-Powered Transcription**: Using OpenAI Whisper API for accurate speech-to-text
-- **Intelligent Summarization**: GPT-4o powered meeting summaries with action items and key decisions
-- **Secure Storage**: Firebase Firestore for encrypted meeting data storage
-- **Real-time Updates**: WebSocket-based real-time communication
-
-### Bot Capabilities
-- **Automatic Meeting Joining**: Bots can join meetings automatically
-- **Audio Recording**: High-quality audio capture with configurable settings
-- **Transcription Announcement**: Bots announce when transcription is active
-- **Compliance Features**: GDPR/CCPA compliant data handling
-- **Error Handling**: Robust error handling and retry mechanisms
-
-### Frontend Features
-- **Modern Dashboard**: Beautiful, responsive React-based interface
-- **Meeting Management**: Create, view, edit, and delete meetings
-- **Search & Filtering**: Advanced search and filtering capabilities
-- **Export Options**: PDF and CSV export for meeting notes
-- **Real-time Updates**: Live updates via Firestore listeners
+- **Google Meet Integration**: Automatic meeting creation with calendar scheduling
+- **Fireflies.ai Transcription**: Real-time meeting transcription and processing
+- **Firebase Backend**: Secure user authentication and data storage
+- **Real-time Dashboard**: View and manage all your meetings
 
 ## 🏗️ Architecture
 
-### Backend (Next.js API Routes)
-- **Serverless Architecture**: Built on Next.js API routes for scalability
-- **Firebase Integration**: Authentication, Firestore, and Storage
-- **AI Services**: OpenAI integration for transcription and summarization
-- **WebSocket Support**: Real-time communication for live updates
+### Frontend Components
 
-### Bot Services
-- **Zoom Bot**: Uses Zoom Meeting SDK for integration
-- **Teams Bot**: Microsoft Graph Communications API integration
-- **Google Meet Bot**: Playwright-based headless browser automation
+#### `src/components/Dashboard.tsx`
+- Main dashboard displaying meetings list
+- Statistics overview (total meetings, completed, etc.)
+- Search and filter functionality
+- Pagination for large meeting lists
 
-### Audio Pipeline
-- **Real-time Capture**: WebRTC-based audio streaming
-- **Format Conversion**: PCM/WAV format support for transcription
-- **Chunk Processing**: Configurable audio chunk sizes for optimal performance
+#### `src/components/CreateMeeting.tsx`
+- Meeting creation form with Google Calendar integration
+- Google OAuth connection for calendar access
+- Automatic Google Meet link generation
+- Attendee management
 
-## 🛠️ Technology Stack
+#### `src/components/MeetingCard.tsx`
+- Individual meeting display component
+- Shows transcript, summary, and meeting details
+- Delete meeting functionality
+- Meeting status indicators
 
-### Frontend
-- **Next.js 15**: React framework with app router
-- **TypeScript**: Type-safe development
-- **Tailwind CSS**: Utility-first CSS framework
-- **React Hook Form**: Form handling and validation
-- **Lucide React**: Beautiful icon library
+#### `src/components/Login.tsx`
+- Firebase authentication interface
+- Google sign-in integration
 
-### Backend
-- **Next.js API Routes**: Serverless API endpoints
-- **Firebase Admin**: Server-side Firebase services
-- **OpenAI API**: GPT-4o and Whisper integration
-- **WebSocket**: Real-time communication
+### Backend API Routes
 
-### Bot Services
-- **Playwright**: Browser automation for Google Meet
-- **Node.js**: Runtime for bot services
-- **Audio Libraries**: PCM processing and format conversion
+#### `/api/auth/google/callback`
+**Purpose**: Handle Google OAuth callback for calendar integration
+**Method**: GET
+**Flow**:
+1. Receives OAuth code from Google
+2. Exchanges code for access token
+3. Redirects user back to app with token
 
-### Database
-- **Firebase Firestore**: NoSQL document database
-- **Firebase Auth**: Authentication and user management
-- **Firebase Storage**: File storage for recordings
+#### `/api/meetings/create-with-meet`
+**Purpose**: Create new meeting with Google Meet integration
+**Method**: POST
+**Authentication**: Firebase ID token required
+**Body**:
+```json
+{
+  "title": "Meeting Title",
+  "startTime": "2024-01-01T10:00:00Z",
+  "endTime": "2024-01-01T11:00:00Z",
+  "attendees": ["email1@example.com", "email2@example.com"],
+  "googleAccessToken": "google_oauth_token"
+}
+```
+**Flow**:
+1. Validates Firebase authentication
+2. Creates Google Calendar event with Meet link
+3. Saves meeting to Firestore database
+4. Returns meeting details and Meet link
 
-## 📋 Prerequisites
+#### `/api/meetings`
+**Purpose**: List user's meetings with pagination
+**Method**: GET
+**Authentication**: Firebase ID token required
+**Query Parameters**:
+- `page`: Page number (default: 1)
+- `limit`: Items per page (default: 10)
+- `platform`: Filter by platform (zoom, teams, google)
+- `status`: Filter by status (scheduled, completed, etc.)
 
-- Node.js 18+ and npm/yarn
-- Firebase project with Firestore enabled
-- OpenAI API key
-- Platform-specific API credentials (Zoom, Teams, Google)
+#### `/api/fireflies/meeting-completed`
+**Purpose**: Webhook endpoint for Fireflies transcription completion
+**Method**: POST
+**Authentication**: Webhook signature validation (optional)
+**Body**:
+```json
+{
+  "meetingId": "fireflies_meeting_id",
+  "eventType": "Transcription completed"
+}
+```
+**Flow**:
+1. Receives webhook from Fireflies when transcription is ready
+2. Fetches full transcript via Fireflies GraphQL API
+3. Processes and saves transcript to database
+4. Updates meeting record with transcription data
 
-## 🚀 Quick Start
+### Core Libraries
 
-### 1. Clone and Install
+#### `src/lib/firebase-admin.ts`
+- Server-side Firebase configuration
+- Admin SDK initialization
+- Database and authentication services
 
+#### `src/lib/firebase.ts`
+- Client-side Firebase configuration
+- User authentication setup
+
+#### `src/lib/google-calendar.ts`
+- Google Calendar API integration
+- Meeting creation with Google Meet links
+- OAuth token management
+
+#### `src/lib/google-auth.ts`
+- Google OAuth helper functions
+- Token storage and retrieval
+- Authentication URL generation
+
+### Context & Types
+
+#### `src/context/AuthContext.tsx`
+- Firebase authentication context
+- User state management
+- Authentication helpers
+
+#### `src/types/index.ts`
+- TypeScript type definitions
+- Meeting, User, and API response types
+
+## 🔧 Configuration
+
+### Environment Variables
+
+```env
+# Firebase Configuration
+NEXT_PUBLIC_FIREBASE_API_KEY=your_api_key
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_domain
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_bucket
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
+
+# Firebase Admin (Server-side)
+FIREBASE_ADMIN_PROJECT_ID=your_project_id
+FIREBASE_ADMIN_CLIENT_EMAIL=your_service_account_email
+FIREBASE_ADMIN_PRIVATE_KEY=your_private_key
+
+# Fireflies.ai Configuration
+FIREFLIES_WEBHOOK_SECRET=your_webhook_secret
+FIREFLIES_API_KEY=your_api_key
+
+# Google OAuth
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=your_client_id
+GOOGLE_CLIENT_ID=your_client_id
+GOOGLE_CLIENT_SECRET=your_client_secret
+```
+
+## 🚀 Setup & Installation
+
+### 1. Clone Repository
 ```bash
 git clone <repository-url>
 cd mom-notes
 npm install
 ```
 
-### 2. Environment Setup
+### 2. Firebase Setup
+1. Create Firebase project
+2. Enable Authentication, Firestore, Storage
+3. Download service account key
+4. Configure environment variables
 
-Copy the environment template and fill in your credentials:
+### 3. Google OAuth Setup
+1. Create Google Cloud project
+2. Enable Calendar API
+3. Create OAuth 2.0 credentials
+4. Add redirect URI: `http://localhost:3000/api/auth/google/callback`
 
-```bash
-cp env.example .env.local
-```
+### 4. Fireflies.ai Setup
+1. Create Fireflies account
+2. Get API key from dashboard
+3. Configure webhook URL: `your-domain/api/fireflies/meeting-completed`
 
-Required environment variables:
-
-```env
-# Firebase Configuration
-NEXT_PUBLIC_FIREBASE_API_KEY=your_firebase_api_key
-NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
-NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
-NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
-NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
-NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
-
-# Firebase Admin (Server-side)
-FIREBASE_ADMIN_PROJECT_ID=your_project_id
-FIREBASE_ADMIN_PRIVATE_KEY=your_private_key
-FIREBASE_ADMIN_CLIENT_EMAIL=your_client_email
-
-# OpenAI Configuration
-OPENAI_API_KEY=your_openai_api_key
-OPENAI_ORGANIZATION=your_org_id
-
-# Platform-specific credentials...
-```
-
-### 3. Firebase Setup
-
-1. Create a new Firebase project
-2. Enable Authentication, Firestore, and Storage
-3. Download service account key for admin SDK
-4. Configure Firestore security rules
-5. Set up authentication providers (Google, Microsoft)
-
-### 4. Run Development Server
-
+### 5. Run Development Server
 ```bash
 npm run dev
 ```
 
-The application will be available at `http://localhost:3000`
+## 📱 Usage Flow
 
-## 🤖 Bot Usage
+### Creating a Meeting
+1. User signs in with Firebase
+2. Optionally connects Google Calendar
+3. Fills meeting form (title, time, attendees)
+4. System creates Google Meet link and calendar event
+5. Meeting saved to database
 
-### Starting Bots
-
-Each platform has its own bot service:
-
-```bash
-# Zoom Bot
-npm run bot:zoom <meeting-id>
-
-# Teams Bot
-npm run bot:teams <meeting-id>
-
-# Google Meet Bot
-npm run bot:google <meeting-id>
-```
-
-### Bot Configuration
-
-Bots can be configured via environment variables or configuration files:
-
-- Audio quality settings
-- Transcription preferences
-- Platform-specific credentials
-- Compliance settings
-
-## 📱 API Endpoints
+### Automatic Transcription
+1. Add `fred@fireflies.ai` to meeting attendees
+2. Start Google Meet
+3. Fireflies bot joins automatically
+4. After meeting ends, Fireflies processes transcript
+5. Webhook triggers, transcript saved to database
+6. Meeting appears in dashboard with full transcript
 
 ### Meeting Management
-- `POST /api/meetings/start` - Start a new meeting
-- `GET /api/meetings` - List meetings with pagination
-- `GET /api/meetings/:id` - Get meeting details
-- `PUT /api/meetings/:id` - Update meeting
-- `DELETE /api/meetings/:id` - Delete meeting
+1. View all meetings in dashboard
+2. Search and filter meetings
+3. View transcript and meeting details
+4. Delete meetings if needed
 
-### Transcription & Notes
-- `POST /api/meetings/:id/transcript` - Save transcript chunk
-- `POST /api/meetings/:id/notes` - Generate AI summary
+## 🔒 Security
 
-### Authentication
-- All endpoints require Firebase ID token in Authorization header
-- User access control based on meeting ownership/participation
+- **Firebase Authentication**: Secure user management
+- **API Authorization**: All endpoints require valid Firebase tokens
+- **Webhook Validation**: Fireflies webhook signature verification
+- **Data Encryption**: All data encrypted in transit and at rest
 
-## 🔒 Security & Compliance
+## 📊 Database Schema
 
-### Data Protection
-- **Encryption**: All data encrypted in transit and at rest
-- **Access Control**: Role-based access control for meetings
-- **Audit Logging**: Comprehensive logging for compliance
-- **Data Retention**: Configurable data retention policies
-
-### Privacy Features
-- **GDPR Compliance**: Right to be forgotten, data portability
-- **CCPA Compliance**: California consumer privacy protection
-- **Transparency**: Clear data usage notifications
-- **Consent Management**: User consent for data processing
-
-## 🚀 Deployment
-
-### Firebase Hosting
-
-```bash
-npm run build
-firebase deploy
-```
-
-### Environment Variables
-
-Set production environment variables in your hosting platform:
-- Firebase Functions environment
-- Vercel environment variables
-- Netlify environment variables
-
-### Bot Deployment
-
-Bots can be deployed as:
-- Docker containers
-- Kubernetes pods
-- Serverless functions
-- Standalone services
-
-## 📊 Monitoring & Analytics
-
-### Logging
-- **Structured Logging**: JSON-formatted logs for easy parsing
-- **Error Tracking**: Comprehensive error logging and alerting
-- **Performance Metrics**: Response times and resource usage
-
-### Health Checks
-- **Bot Status**: Real-time bot health monitoring
-- **API Health**: Endpoint availability and performance
-- **Database Health**: Firestore connection and performance
-
-## 🔧 Configuration
-
-### Audio Settings
+### Meetings Collection
 ```typescript
-const audioConfig = {
-  sampleRate: 16000,    // Hz
-  channels: 1,          // Mono
-  bitDepth: 16,         // Bits per sample
-  format: 'pcm',        // Audio format
-  chunkSize: 1000       // Chunk size in ms
-};
-```
-
-### AI Settings
-```typescript
-const aiConfig = {
-  model: 'gpt-4o',      // OpenAI model
-  temperature: 0.3,      // Creativity level
-  maxTokens: 2000,      // Response length
-  includeActionItems: true,
-  includeDecisions: true
-};
+{
+  id: string;
+  title: string;
+  platform: 'google' | 'zoom' | 'teams';
+  status: 'scheduled' | 'in-progress' | 'completed';
+  createdBy: string; // Firebase UID
+  participants: Array<{name: string, email: string}>;
+  transcript: string;
+  summary: string;
+  actionItems: string[];
+  decisions: string[];
+  meetingUrl: string;
+  firefliesId?: string;
+  createdAt: Date;
+  updatedAt?: Date;
+}
 ```
 
 ## 🤝 Contributing
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
+1. Fork repository
+2. Create feature branch
+3. Make changes
+4. Test thoroughly
+5. Submit pull request
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🆘 Support
-
-- **Documentation**: [Wiki](link-to-wiki)
-- **Issues**: [GitHub Issues](link-to-issues)
-- **Discussions**: [GitHub Discussions](link-to-discussions)
-- **Email**: support@example.com
-
-## 🔮 Roadmap
-
-### Upcoming Features
-- **Speaker Identification**: AI-powered speaker recognition
-- **Sentiment Analysis**: Meeting mood and tone analysis
-- **Integration APIs**: Webhook support for external systems
-- **Mobile Apps**: iOS and Android applications
-- **Advanced Analytics**: Meeting insights and trends
-
-### Platform Expansion
-- **Webex**: Cisco Webex integration
-- **Slack**: Slack Huddle support
-- **Discord**: Discord voice channel integration
-- **Custom Platforms**: Plugin architecture for custom integrations
-
----
-
-Built with ❤️ by the Meeting Assistant Team
+MIT License - see LICENSE file for details.

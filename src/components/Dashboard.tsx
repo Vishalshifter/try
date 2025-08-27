@@ -3,17 +3,19 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { Meeting, APIResponse, PaginatedResponse } from '@/types';
-import { Plus, Search, Filter, Calendar, Video, Users, Clock } from 'lucide-react';
+import { Plus, Search, Filter, Calendar, Video, Users, Clock, LogOut } from 'lucide-react';
 import MeetingCard from './MeetingCard';
-import StartMeetingModal from './StartMeetingModal';
+
 import Login from './Login';
+import CreateMeeting from './CreateMeeting';
+import AdminSetup from './AdminSetup';
 import { toast } from 'react-hot-toast';
 
 export default function Dashboard() {
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showStartModal, setShowStartModal] = useState(false);
+
   const [searchTerm, setSearchTerm] = useState('');
   const [platformFilter, setPlatformFilter] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('');
@@ -69,15 +71,7 @@ export default function Dashboard() {
     }
   };
 
-  const handleStartMeeting = () => {
-    setShowStartModal(true);
-  };
 
-  const handleMeetingStarted = (meeting: Meeting) => {
-    setMeetings(prev => [meeting, ...prev]);
-    setShowStartModal(false);
-    toast.success('Meeting started successfully!');
-  };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -135,12 +129,13 @@ export default function Dashboard() {
                 Manage your meetings and get AI-powered insights
               </p>
             </div>
+            
             <button
-              onClick={handleStartMeeting}
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              onClick={signOut}
+              className="flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
             >
-              <Plus className="w-4 h-4 mr-2" />
-              Start Meeting
+              <LogOut className="w-4 h-4 mr-2" />
+              Logout
             </button>
           </div>
         </div>
@@ -242,11 +237,19 @@ export default function Dashboard() {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Participants</p>
                 <p className="text-2xl font-semibold text-gray-900">
-                  {meetings.reduce((acc, m) => acc + m.participants.length, 0)}
+                  {meetings.reduce((acc, m) => acc + (m.participants?.length || 0), 0)}
                 </p>
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Admin Setup */}
+        <AdminSetup />
+        
+        {/* Create Meeting Section */}
+        <div className="mb-8">
+          <CreateMeeting />
         </div>
 
         {/* Meetings List */}
@@ -270,15 +273,7 @@ export default function Dashboard() {
                   : 'Get started by creating your first meeting'
                 }
               </p>
-              {!searchTerm && !platformFilter && !statusFilter && (
-                <button
-                  onClick={handleStartMeeting}
-                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Start Meeting
-                </button>
-              )}
+
             </div>
           ) : (
             <div className="divide-y divide-gray-200">
@@ -331,13 +326,7 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* Start Meeting Modal */}
-      {showStartModal && (
-        <StartMeetingModal
-          onClose={() => setShowStartModal(false)}
-          onMeetingStarted={handleMeetingStarted}
-        />
-      )}
+
     </div>
   );
 }
