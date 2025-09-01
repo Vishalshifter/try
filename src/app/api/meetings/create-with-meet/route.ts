@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
     const token = authHeader.split('Bearer ')[1];
     const decodedToken = await adminAuth.verifyIdToken(token);
     
-    const { title, startTime, endTime, attendees } = await request.json();
+    const { title, startTime, endTime, attendees, userGoogleToken } = await request.json();
 
     if (!title || !startTime) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -23,25 +23,66 @@ export async function POST(request: NextRequest) {
     let meetLink = `https://meet.google.com/new`;
     let calendarLink = '';
     
-    // Create on admin calendar and get the real Google Meet link
-    try {
-      console.log('Getting admin token...');
-      const adminToken = await AdminTokenManager.getValidToken();
-      console.log('Admin token obtained, creating calendar service...');
-      const calendarService = new GoogleCalendarService(adminToken);
-      console.log('Creating meeting with Google Meet...');
-      const result = await calendarService.createMeetingWithGoogleMeet({
-        title: `[Auto] ${title}`,
-        startTime,
-        endTime: endTime || new Date(new Date(startTime).getTime() + 60 * 60 * 1000).toISOString(),
-        attendees: ['fred@fireflies.ai', ...(attendees || [])]
-      });
-      console.log('Meeting created successfully:', result);
-      meetLink = result.meetLink; // Use the real Google Meet link
-      calendarLink = result.htmlLink;
-    } catch (error) {
-      console.error('Admin calendar creation failed:', error);
-      meetLink = `https://meet.google.com/new`;
+    // Create meeting and get the Google Meet link
+    let sharedMeetLink = '';
+    
+    if (userGoogleToken) {
+      // User connected - create on user's calendar first
+      try {
+        console.log('Creating meeting on user calendar...');
+        const userCalendarService = new GoogleCalendarService(userGoogleToken);
+        const userResult = await userCalendarService.createMeetingWithGoogleMeet({
+          title,
+          startTime,
+          endTime: endTime || new Date(new Date(startTime).getTime() + 60 * 60 * 1000).toISOString(),
+          attendees: attendees || []
+        });
+        meetLink = userResult.meetLink;
+        sharedMeetLink = userResult.meetLink;
+        calendarLink = userResult.htmlLink;
+        console.log('User calendar meeting created:', userResult);
+      } catch (error) {
+        console.error('User calendar creation failed:', error);
+      }
+    } else {
+      // User not connected - create on admin calendar
+      try {
+        console.log('Creating meeting on admin calendar...');
+        const adminToken = await AdminTokenManager.getValidToken();
+        const adminCalendarService = new GoogleCalendarService(adminToken);
+        const adminResult = await adminCalendarService.createMeetingWithGoogleMeet({
+          title,
+          startTime,
+          endTime: endTime || new Date(new Date(startTime).getTime() + 60 * 60 * 1000).toISOString(),
+          attendees: attendees || []
+        });
+        meetLink = adminResult.meetLink;
+        sharedMeetLink = adminResult.meetLink;
+        calendarLink = adminResult.htmlLink;
+        console.log('Admin calendar meeting created:', adminResult);
+      } catch (error) {
+        console.error('Admin calendar creation failed:', error);
+        meetLink = `https://meet.google.com/new`;
+      }
+    }
+    
+    // Always create backup on admin calendar for Fireflies (using same meet link)
+    if (userGoogleToken && sharedMeetLink) {
+      try {
+        console.log('Creating Fireflies backup on admin calendar...');
+        const adminToken = await AdminTokenManager.getValidToken();
+        const adminCalendarService = new GoogleCalendarService(adminToken);
+        await adminCalendarService.createMeetingWithExistingLink({
+          title: `[Fireflies] ${title}`,
+          startTime,
+          endTime: endTime || new Date(new Date(startTime).getTime() + 60 * 60 * 1000).toISOString(),
+          attendees: ['fred@fireflies.ai', ...(attendees || [])],
+          meetLink: sharedMeetLink
+        });
+        console.log('Fireflies backup created with same meet link');
+      } catch (error) {
+        console.error('Fireflies backup creation failed:', error);
+      }
     }
 
     // Save to Firestore

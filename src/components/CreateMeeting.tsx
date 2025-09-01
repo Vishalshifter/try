@@ -1,7 +1,8 @@
 'use client'
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { getGoogleAuthUrl, getStoredAccessToken, storeAccessToken } from '@/lib/google-auth';
 
 export default function CreateMeeting() {
   const { user } = useAuth();
@@ -10,6 +11,21 @@ export default function CreateMeeting() {
   const [attendees, setAttendees] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
+  const [userGoogleToken, setUserGoogleToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const tokenFromUrl = urlParams.get('token');
+    
+    if (tokenFromUrl) {
+      storeAccessToken(tokenFromUrl);
+      setUserGoogleToken(tokenFromUrl);
+      window.history.replaceState({}, '', window.location.pathname);
+    } else {
+      const storedToken = getStoredAccessToken();
+      setUserGoogleToken(storedToken);
+    }
+  }, []);
 
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -33,7 +49,8 @@ export default function CreateMeeting() {
         body: JSON.stringify({
           title,
           startTime,
-          attendees: attendees.split(',').map(email => email.trim()).filter(Boolean)
+          attendees: attendees.split(',').map(email => email.trim()).filter(Boolean),
+          userGoogleToken
         })
       });
 
@@ -59,7 +76,31 @@ export default function CreateMeeting() {
       <h2 className="text-xl font-bold mb-4">Create Meeting with Google Meet</h2>
       
       <div className="mb-4 p-3 bg-blue-50 rounded">
-        <p className="text-sm text-blue-800">Meeting will be created with Google Meet link</p>
+        {!userGoogleToken ? (
+          <>
+            <p className="text-sm text-blue-800 mb-2">Connect Google to save meeting to your calendar:</p>
+            <button
+              onClick={() => window.location.href = getGoogleAuthUrl()}
+              className="text-sm bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 mb-2"
+            >
+              Connect Google Calendar
+            </button>
+            <p className="text-xs text-gray-600">Meeting will be saved to admin calendar only</p>
+          </>
+        ) : (
+          <>
+            <p className="text-sm text-green-800 mb-1">✓ Meeting will be saved to your calendar + admin calendar</p>
+            <button
+              onClick={() => {
+                localStorage.removeItem('google_access_token');
+                setUserGoogleToken(null);
+              }}
+              className="text-sm bg-gray-500 text-white px-2 py-1 rounded hover:bg-gray-600"
+            >
+              Disconnect
+            </button>
+          </>
+        )}
         <p className="text-xs text-gray-600 mt-1">Fireflies will automatically join for transcription</p>
       </div>
       

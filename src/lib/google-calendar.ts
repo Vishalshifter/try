@@ -101,4 +101,41 @@ export class GoogleCalendarService {
       htmlLink: result.htmlLink
     };
   }
+
+  async createMeetingWithExistingLink(eventData: any) {
+    const event = {
+      summary: eventData.title,
+      start: {
+        dateTime: new Date(eventData.startTime).toISOString(),
+        timeZone: 'UTC'
+      },
+      end: {
+        dateTime: new Date(eventData.endTime).toISOString(),
+        timeZone: 'UTC'
+      },
+      attendees: eventData.attendees.map((email: string) => ({ email })),
+      description: `Join meeting: ${eventData.meetLink}`,
+      location: eventData.meetLink
+    };
+
+    const response = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${this.accessToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(event)
+    });
+
+    const result = await response.json();
+    if (!response.ok) {
+      throw new Error(`Google Calendar API error: ${response.status} ${JSON.stringify(result)}`);
+    }
+    
+    return {
+      eventId: result.id,
+      meetLink: eventData.meetLink,
+      htmlLink: result.htmlLink
+    };
+  }
 }
